@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="blog">
+	<select id="idCheck" parameterType="hashmap" resultType="Integer">
+		SELECT COUNT(*) AS CNT
+		FROM MEMBER
+		WHERE M_ID = #{id}
+	</select>
+	
+	<insert id="insertBM" parameterType="hashmap">
+		INSERT INTO MEMBER (M_NO,M_ID,M_PW,M_NM)
+		VALUES (M_SEQ.NEXTVAL, #{id}, #{pw}, #{nm} )
+	</insert>
+	
+	<select id="getBM" parameterType="hashmap" resultType="hashmap">
+		SELECT M_NO,M_NM,M_ID
+		FROM MEMBER
+		WHERE DEL_YN = 1
+		AND M_ID= #{id}
+		AND M_PW= #{pw}
+	</select>
+	
+	<select id="getBCnt" parameterType="hashmap" resultType="Integer">
+		SELECT COUNT(*) AS CNT 
+		FROM POST P INNER JOIN MEMBER MB ON P.M_NO = MB.M_NO
+        AND MB.DEL_YN=1
+		WHERE P.DEL_YN=1
+		<if test="searchTxt != null and searchTxt != ''">
+			<choose>
+				<when test="searchGbn eq 0">
+					AND P.P_TITLE LIKE '%' || #{searchTxt} || '%'
+				</when>
+				<when test="searchGbn eq 1">
+					AND MB.M_NM LIKE '%' || #{searchTxt} || '%'
+				</when>
+				<when test="searchGbn eq 2">
+					AND (P.P_TITLE LIKE '%' || #{searchTxt} || '%' 
+						OR MB.M_NM LIKE'%' || #{searchTxt} || '%')
+				</when>
+			</choose>
+		</if>
+	</select>
+	
+	<select id="getB" parameterType="hashmap" resultType="hashmap">
+		SELECT B.P_NO ,B.P_TITLE ,B.P_DATE,B.M_NM , B.P_HIT ,B.P_CON
+		FROM(
+			SELECT P.P_NO , P.P_TITLE, TO_CHAR(P.P_DATE,'YY.MM.DD') AS P_DATE ,MB.M_NM , P.P_HIT, 
+	        ROW_NUMBER()OVER(ORDER BY P.P_NO DESC) AS RNUM ,P.P_CON
+			FROM POST P INNER JOIN MEMBER MB ON P.M_NO = MB.M_NO
+			                                AND MB.DEL_YN=1
+			WHERE P.DEL_YN=1
+		        <if test="searchTxt != null and searchTxt != ''">
+					<choose>
+						<when test="searchGbn eq 0">
+							AND P.P_TITLE LIKE '%' || #{searchTxt} || '%'
+						</when>
+						<when test="searchGbn eq 1">
+							AND MB.M_NM LIKE '%' || #{searchTxt} || '%'
+						</when>
+						<when test="searchGbn eq 2">
+							AND (P.P_TITLE LIKE '%' || #{searchTxt} || '%' 
+								OR MB.M_NM LIKE'%' || #{searchTxt} || '%')
+						</when>
+					</choose>
+				</if>
+		    ) B 
+		WHERE B.RNUM BETWEEN #{startCnt} AND #{endCnt}
+	</select>
+	
+	<!-- 글1개 -->
+	<select id="getData2" parameterType="hashmap" resultType="hashmap">
+		SELECT P.P_NO AS P_NO, MB.M_NM AS M_NM , P.P_TITLE AS P_TITLE, P.P_CON AS P_CON, TO_CHAR(P.P_DATE,'YY/MM/DD HH24:MI') AS P_DATE ,P.P_HIT AS P_HIT
+		FROM POST P INNER JOIN MEMBER MB ON P.M_NO = MB.M_NO
+		WHERE P.P_NO = #{no}
+	</select>
+	<!-- 상세보기-->
+	<select id="getData3" parameterType="hashmap" resultType="hashmap">
+		SELECT P.P_NO AS P_NO, MB.M_NM AS M_NM , P.P_TITLE AS P_TITLE, P.P_CON AS P_CON, P.P_DATE AS P_DATE ,P.P_HIT AS P_HIT
+		FROM POST P INNER JOIN MEMBER MB ON P.M_NO = MB.M_NO
+		WHERE P_NO = #{qwe}
+	</select>
+	
+	<!-- 글쓰기 -->
+	<insert id="saveB" parameterType="hashmap">
+		INSERT INTO POST(P_NO,P_TITLE,P_CON,M_NO) 
+		VALUES(P_SEQ.NEXTVAL , #{title},#{con},#{num} )
+	</insert>
+	
+	<!-- 댓글쓰기 -->
+	<insert id="saveComment" parameterType="hashmap">
+		INSERT INTO MENT (MENT_NO , MENT_CON , M_NO , P_NO) 
+		VALUES(MENT_SEQ.nextval , #{mCon}, #{num} , #{no} )
+	</insert>
+	
+	<!-- 댓글목록 -->
+	<select id="getM" parameterType="hashmap" resultType="hashmap">
+		SELECT MB.M_NM AS M_NM, M.MENT_NO AS MENT_NO, M.MENT_CON AS MENT_CON ,P.P_NO AS P_NO ,TO_CHAR(M.MENT_TM,'YY-MM-DD  HH24:MI') AS MENT_TM,
+				 ROW_NUMBER()OVER(ORDER BY P.P_NO DESC) AS RNUM
+		FROM MENT M INNER JOIN POST P ON M.P_NO = P.P_NO 
+		            INNER JOIN MEMBER MB ON M.M_NO = MB.M_NO
+		WHERE P.P_NO = #{no}
+	</select>
+	<!-- 수정 -->
+	<update id="updateB" parameterType="hashmap" >
+		UPDATE POST SET  P_TITLE= #{title}, P_CON= #{con} 
+		WHERE P_NO= #{qwe}
+	</update>
+	<!-- 삭제  -->
+	<delete id="deleteB" parameterType="hashmap" >
+		DELETE FROM POST WHERE P_NO = #{qwe}
+	</delete>
+	
+	<!-- 블로그목록 -->
+	<select id="getBloglist" parameterType="hashmap" resultType="hashmap">
+		SELECT BLOG_NO , BLOG_NM , TO_CHAR(BLOG_DT,'YY.MM.DD') AS BLOG_DT ,ROW_NUMBER()OVER(ORDER BY BLOG_NO DESC) AS RNUM
+		FROM BLOG
+	</select>
+	<!-- 블로그생성 -->
+	<insert id="insertBlog" parameterType="hashmap">
+	INSERT INTO BLOG(BLOG_NO , BLOG_NM , M_NO) 
+	VALUES( BLOG_SEQ.nextval , #{bNm} ,#{bmno})
+	</insert>
+	<!-- 블로그중복체크 -->
+	<select id="blogCheck" parameterType="hashmap" resultType="Integer">
+		SELECT COUNT(*) AS CNT
+		FROM BLOG
+		WHERE BLOG_NM = #{bNm}
+	</select>
+	
+	<!-- 댓글삭제  -->
+	<delete id="deleteMent" parameterType="hashmap">
+		DELETE FROM MENT WHERE MENT_NO=#{rq}
+	</delete>
+	<!-- 회원정보수정 -->
+	<select id="getuserData" parameterType="hashmap" resultType="hashmap">
+		SELECT M_NO , M_ID, M_NM 
+		FROM MEMBER 
+		WHERE M_NO = #{num}
+	</select>
+	<update id="updateU" parameterType="hashmap">
+		UPDATE MEMBER SET M_NM =#{Bnm}, M_PW =#{Bpw}
+		WHERE M_NO = #{num}
+	</update>
+	<!-- 회원탈퇴 -->
+	<delete id="deleteU" parameterType="hashmap">
+		DELETE FROM MEMBER WHERE M_NO=#{num}
+	</delete>
+</mapper>
+
+
